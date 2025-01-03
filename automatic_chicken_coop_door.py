@@ -1,7 +1,6 @@
 import time
-from enum import Enum
 
-from machine import Pin, Timer, deepsleep
+from machine import Pin, deepsleep
 from stepper import Stepper
 
 DEBOUNCE_TIME_SECONDS = 1 * 60  # 1 minute
@@ -21,13 +20,8 @@ stepper = Stepper(STEP_PIN, DIR_PIN, steps_per_rev=STEPS_PER_REV, speed_sps=50)
 input_pin = Pin(INPUT_PIN, Pin.IN, Pin.PULL_DOWN)
 
 
-class Direction(Enum):
-    CW = 1
-    CCW = 0
-
-
-def rotate_motor(steps: int, direction: Direction) -> None:
-    if direction == Direction.CW:
+def rotate_motor(steps: int, *, is_cw: bool) -> None:
+    if is_cw:
         stepper.step(steps)
     else:
         stepper.step(-steps)
@@ -50,16 +44,16 @@ def debounce_input() -> int:
 def main() -> None:
     # Clear IRQ while handling existing one
     input_pin.irq()
-    
+
     print("Starting debounce check...")
     stable_state = debounce_input()
 
     if stable_state:
         print("Input stable at HIGH: Rotating CW")
-        rotate_motor(steps=STEPS_TO_MOVE, direction=Direction.CW)
+        rotate_motor(steps=STEPS_TO_MOVE, is_cw=True)
     else:
         print("Input stable at LOW: Rotating CCW")
-        rotate_motor(steps=STEPS_TO_MOVE, direction=Direction.CCW)
+        rotate_motor(steps=STEPS_TO_MOVE, is_cw=False)
 
     print("Entering deep sleep...")
     input_pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING)
