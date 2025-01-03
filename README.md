@@ -18,3 +18,11 @@ The stepper motor driver should be connected with:
 ## Installation
 
 Download Micropython and flash it onto target following [instructions](https://micropython.org/download/ESP32_GENERIC/).
+
+## Flashing of Python code
+
+Run the following to flash the required files:
+
+```shell
+mpremote connect COM5 cp .\main.py :
+```

@@ -1,3 +1,5 @@
 micropython-stepper
 micropython-esp32-stubs
 micropython-esp32-esp32_generic-stubs
+esptool
+mpremote
