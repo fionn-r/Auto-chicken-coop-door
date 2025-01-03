@@ -1,7 +1,6 @@
 import time
 
 from machine import Pin, deepsleep
-from stepper import Stepper
 
 DEBOUNCE_TIME_SECONDS = 1 * 60  # 1 minute
 
@@ -15,16 +14,20 @@ STEPS_PER_REV = 200
 NUM_ROTATIONS = 10
 STEPS_TO_MOVE = STEPS_PER_REV * NUM_ROTATIONS
 
-stepper = Stepper(STEP_PIN, DIR_PIN, steps_per_rev=STEPS_PER_REV, speed_sps=50)
-
+step = Pin(STEP_PIN, Pin.OUT)
+direction = Pin(DIR_PIN, Pin.OUT)
 input_pin = Pin(INPUT_PIN, Pin.IN, Pin.PULL_DOWN)
+
+is_door_currently_up: bool = False  # Always assume door is down at boot
 
 
 def rotate_motor(steps: int, *, is_cw: bool) -> None:
-    if is_cw:
-        stepper.step(steps)
-    else:
-        stepper.step(-steps)
+    direction.value(is_cw)  # Set direction: 1 for CW, 0 for CCW
+    for _ in range(steps):
+        step.on()
+        time.sleep_us(500)  # Adjust this delay to control speed (e.g., 500 µs)
+        step.off()
+        time.sleep_us(500)
 
 
 def debounce_input() -> int:
@@ -42,18 +45,23 @@ def debounce_input() -> int:
 
 
 def main() -> None:
+    global is_door_currently_up
     # Clear IRQ while handling existing one
     input_pin.irq()
 
     print("Starting debounce check...")
     stable_state = debounce_input()
 
-    if stable_state:
-        print("Input stable at HIGH: Rotating CW")
-        rotate_motor(steps=STEPS_TO_MOVE, is_cw=True)
+    if stable_state == is_door_currently_up:
+        print("Door is already in desired position")
     else:
-        print("Input stable at LOW: Rotating CCW")
-        rotate_motor(steps=STEPS_TO_MOVE, is_cw=False)
+        if stable_state:
+            print("Input stable at HIGH: Rotating CW")
+            rotate_motor(steps=STEPS_TO_MOVE, is_cw=True)
+        else:
+            print("Input stable at LOW: Rotating CCW")
+            rotate_motor(steps=STEPS_TO_MOVE, is_cw=False)
+        is_door_currently_up = bool(stable_state)
 
     print("Entering deep sleep...")
     input_pin.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING)
